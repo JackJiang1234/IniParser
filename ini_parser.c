@@ -19,28 +19,37 @@ typedef struct _Section
 {
 	char* sname;
 	Entry* first;	
-	_Section* next;
+	struct _Section* next;
 }Section;
 
 struct _IniParser
 {
 	char* content;
 	Section* first;
-}
+};
 
-IniParser* ini_parser_new(char* content)
+IniParser* ini_parser_create(void)
 {
-	return_val_if_fail(content != NULL, NULL);
-
-	IniParser* thiz = malloc(sizeof(IniParser));
+	IniParser* thiz = (IniParser*)malloc(sizeof(IniParser));
 	
 	if (thiz != NULL)
 	{
 		thiz->first = NULL;
-		thiz->content = content;
 	}
 
 	return thiz;
+}
+
+Ret ini_parser_parse(char* content)
+{
+	return_val_if_fail(content != NULL, RET_INVALID_PARAMS);
+	
+	return RET_OK;
+}
+
+Ret ini_parser_get_by_key(IniParser* thiz, char* section, char* key, char** val)
+{
+	return RET_OK;
 }
 
 static void ini_parser_section_destroy(Section* sec)
