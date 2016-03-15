@@ -15,34 +15,60 @@ typedef struct _Entry
 	struct _Entry* next;
 }Entry;
 
-typedef struct _Section
+typedef struct _Group
 {
 	char* sname;
 	Entry* first;	
-	struct _Section* next;
-}Section;
+	struct _Group* next;
+}Group;
 
 struct _IniParser
 {
-	char* content;
-	Section* first;
+	char* ini;
+	char* comment;
+	char* delim;
+	Group* first;
 };
 
-IniParser* ini_parser_create(void)
+IniParser* ini_parser_create(char* comment, char* delim)
 {
 	IniParser* thiz = (IniParser*)malloc(sizeof(IniParser));
 	
 	if (thiz != NULL)
 	{
+		thiz->comment = comment == NULL ? ";" : comment;
+		thiz->delim = delim == NULL ? "=" : delim;
 		thiz->first = NULL;
 	}
 
 	return thiz;
 }
 
-Ret ini_parser_parse(char* content)
+Ret ini_parser_parse(IniParser* thiz, char* ini)
 {
-	return_val_if_fail(content != NULL, RET_INVALID_PARAMS);
+	return_val_if_fail((ini != NULL) && (thiz != NULL) , RET_INVALID_PARAMS);
+
+	enum _State
+	{
+		STAT_NONE = 0,
+		STAT_GROUP,
+		STAT_KEY,
+		STAT_VAL,
+		STAT_COMMENT
+	}state = STAT_NONE;
+	thiz->ini = ini;
+	char* p = ini;
+	char* group_start = NULL;
+	char* key_start = NULL;
+	char* val_start = NULL;
+
+	while(*p != '\0')
+	{
+		switch(state)
+		{
+
+		}
+	}
 	
 	return RET_OK;
 }
@@ -52,9 +78,9 @@ Ret ini_parser_get_by_key(IniParser* thiz, char* section, char* key, char** val)
 	return RET_OK;
 }
 
-static void ini_parser_section_destroy(Section* sec)
+static void ini_parser_group_destroy(Group* group)
 {
-	Entry* iter = sec->first;
+	Entry* iter = group->first;
 	Entry* next = NULL;
 	while(iter != NULL)
 	{
@@ -67,7 +93,7 @@ static void ini_parser_section_destroy(Section* sec)
 		iter = next;
 	}
 
-	free(sec);
+	free(group);
 
 	return;
 }
@@ -76,12 +102,12 @@ void ini_parser_destroy(IniParser* thiz)
 {
 	if (thiz != NULL)
 	{
-		Section* iter = thiz->first;
-		Section* next = NULL;
+		Group* iter = thiz->first;
+		Group* next = NULL;
 		while(iter != NULL)
 		{
 			next = iter->next;
-			ini_parser_section_destroy(iter);
+			ini_parser_group_destroy(iter);
 			iter = next;	
 		}
 		thiz->first = NULL;
