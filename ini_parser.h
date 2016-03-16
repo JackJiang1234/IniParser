@@ -31,7 +31,7 @@ typedef enum _Ret
 
 typedef void(*EntryVisitFunc)(void* ctx, char* group, char* key, char* val);
 
-IniParser* ini_parser_create(char* comment, char* delim);
+IniParser* ini_parser_create(char comment, char delim);
 Ret ini_parser_parse(IniParser* thiz, char* ini);
 Ret ini_parser_get_by_key(IniParser* thiz, char* group, char* key, char** val);
 Ret ini_parser_foreach(IniParser* thiz, EntryVisitFunc* visit);
