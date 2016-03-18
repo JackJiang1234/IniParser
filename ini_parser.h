@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define NUL '\0'
+
 struct  _IniParser;
 typedef struct _IniParser IniParser;
 typedef enum _Ret

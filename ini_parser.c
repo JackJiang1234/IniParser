@@ -39,13 +39,44 @@ IniParser* ini_parser_create(char comment, char delim)
 	
 	if (thiz != NULL)
 	{
-		thiz->comment = comment == ' ' ? ';' : comment;
-		thiz->delim = delim == ' ' ? '=' : delim;
+		thiz->comment = comment == NUL ? ';' : comment;
+		thiz->delim = delim == NUL ? '=' : delim;
 		thiz->first = NULL;
 		thiz->ini = NULL;
 	}
 
 	return thiz;
+}
+
+static const char* strtrim(char* str)
+{
+	char* p = str + strlen(str) - 1;
+	while(p != str && isspace(*p))
+	{
+		*p = '\0';
+		p--;
+	}
+
+	p = str;
+	while(*p != '\0' && isspace(*p))
+	{
+		p++;
+	}
+
+	if (p != str)
+	{
+		char* d = str;
+		char* s = p;
+		while(*s != '\0')
+		{
+			*d = *s;
+			s++;
+			d++;
+		}
+		*d = '\0';
+	}
+
+	return str;
 }
 
 Ret ini_parser_parse(IniParser* thiz, char* ini)
@@ -86,7 +117,7 @@ Ret ini_parser_parse(IniParser* thiz, char* ini)
 				else if (!isspace(*p))
 				{
 					state = STAT_KEY;
-					key_start = p + 1;
+					key_start = p;
 				}
 			}
 			break;
@@ -145,7 +176,7 @@ Ret ini_parser_parse(IniParser* thiz, char* ini)
 		strtrim(key_start);
 		strtrim(val_start);
 		//add to group
-		printf("%s=%s", key_start, val_start);
+		printf("%s=%s\n", key_start, val_start);
 	}
 	
 	return RET_OK;
