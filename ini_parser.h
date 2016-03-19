@@ -31,11 +31,11 @@ typedef enum _Ret
 
 #define SAFE_FREE(p) if(p != NULL){free(p); p = NULL;}
 
-typedef void(*EntryVisitFunc)(void* ctx, char* group, char* key, char* val);
+typedef void(*EntryVisitFunc)(void* ctx, const char* group, const char* key, const char* val);
 
 IniParser* ini_parser_create(char comment, char delim);
-Ret ini_parser_parse(IniParser* thiz, char* ini);
-Ret ini_parser_get_by_key(IniParser* thiz, char* group, char* key, char** val);
+Ret ini_parser_parse(IniParser* thiz, const char* ini);
+Ret ini_parser_get_by_key(IniParser* thiz, const char* group, const char* key, char** val);
 Ret ini_parser_foreach(IniParser* thiz, EntryVisitFunc* visit);
 void ini_parser_destroy(IniParser* thiz);
 

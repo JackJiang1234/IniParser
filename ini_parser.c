@@ -79,7 +79,7 @@ static const char* strtrim(char* str)
 	return str;
 }
 
-Ret ini_parser_parse(IniParser* thiz, char* ini)
+Ret ini_parser_parse(IniParser* thiz, const char* ini)
 {
 	return_val_if_fail((ini != NULL) && (thiz != NULL) , RET_INVALID_PARAMS);
 
@@ -182,7 +182,7 @@ Ret ini_parser_parse(IniParser* thiz, char* ini)
 	return RET_OK;
 }
 
-Ret ini_parser_get_by_key(IniParser* thiz, char* section, char* key, char** val)
+Ret ini_parser_get_by_key(IniParser* thiz, const char* section, const char* key, char** val)
 {
 	return RET_OK;
 }
@@ -226,3 +226,17 @@ void ini_parser_destroy(IniParser* thiz)
 
 	return;
 }
+
+#ifdef INI_PARSER_TEST
+
+int main(void)
+{
+	char* ini = "[group]\nkey=value\nkey1 = value2\n[group2]\nkey3=value3";
+	IniParser* parser = ini_parser_create(NUL, NUL);
+	ini_parser_parse(parser, ini);
+	ini_parser_destroy(parser);
+
+	return 0;
+}
+
+#endif
