@@ -8,19 +8,19 @@
 #include<stdio.h>
 #include<string.h>
 #include<ctype.h>
-#include<unistd.h>
+#include<assert.h>
 #include "ini_parser.h"
 
 typedef struct _Entry
 {
-	char* key;
-	char* val;
+	const char* key;
+	const char* val;
 	struct _Entry* next;
 }Entry;
 
 typedef struct _Group
 {
-	char* sname;
+	const char* name;
 	Entry* first;	
 	struct _Group* next;
 }Group;
@@ -79,6 +79,82 @@ static const char* strtrim(char* str)
 	return str;
 }
 
+static Ret on_group(IniParser* thiz, const char* gname)
+{
+	Group* g = (Group*)malloc(sizeof(Group));
+	if (g == NULL)
+	{
+		return RET_OOM;
+	}
+	g->name = gname;
+	g->first = NULL;
+	g->next = NULL;
+	
+	if (thiz->first == NULL)
+	{
+		thiz->first = g;
+	}
+	else 
+	{
+		Group* p = thiz->first;
+		while(p->next != NULL)
+		{
+			p = p->next;
+		}
+		p->next = g;
+	}
+
+	return RET_OK;
+}
+
+static Group* ini_parser_find_group(IniParser* thiz, const char* gname)
+{
+	Group* fg = thiz->first;
+	while(strcmp(fg->name, gname) != 0)
+	{
+		fg = fg->next;
+	}
+	assert(fg != NULL);
+	
+	return fg;
+}
+
+static Ret on_entry(IniParser* thiz, const char* g, const char* key, const char* val)
+{
+	Ret ret = RET_OK;
+	if (thiz->first == NULL)
+	{
+		ret = on_group(thiz, g);
+		return_val_if_fail(ret == RET_OK, ret);
+	}
+
+	Group* fg = ini_parser_find_group(thiz, g);
+	
+	Entry* new_entry = (Entry*)malloc(sizeof(Entry));
+	if (new_entry == NULL)
+	{
+		return RET_OOM;
+	}
+	new_entry->key = key;
+	new_entry->val = val;
+	
+	if (fg->first == NULL)
+	{
+		fg->first = new_entry;
+	}
+	else 
+	{
+		Entry* fe = fg->first;
+		while(fe->next != NULL)
+		{
+			fe = fe->next;
+		}
+		fe->next = new_entry;
+	}
+
+	return ret;
+}
+
 Ret ini_parser_parse(IniParser* thiz, const char* ini)
 {
 	return_val_if_fail((ini != NULL) && (thiz != NULL) , RET_INVALID_PARAMS);
@@ -94,6 +170,7 @@ Ret ini_parser_parse(IniParser* thiz, const char* ini)
 		STAT_VAL,
 		STAT_COMMENT
 	}state = STAT_NONE;
+	Ret ret = RET_OK;
 	char* p = thiz->ini;
 	char* group_start = NULL;
 	char* key_start = NULL;
@@ -129,7 +206,12 @@ Ret ini_parser_parse(IniParser* thiz, const char* ini)
 					state = STAT_NONE;
 					strtrim(group_start);
 					//add a new group
-					printf("[%s]\n", group_start);
+					//printf("[%s]\n", group_start);
+					ret = on_group(thiz, group_start);
+					if (ret != RET_OK)
+					{
+						return ret;
+					}
 				}
 			}
 			break;
@@ -152,7 +234,12 @@ Ret ini_parser_parse(IniParser* thiz, const char* ini)
 					strtrim(key_start);
 					strtrim(val_start);
 					//add a entry to a group
-					printf("%s=%s\n", key_start, val_start);
+					//printf("%s=%s\n", key_start, val_start);
+					ret = on_entry(thiz, group_start, key_start, val_start);
+					if (ret != RET_OK)
+					{
+						return ret;
+					}
 				}
 			}
 			break;
@@ -176,15 +263,63 @@ Ret ini_parser_parse(IniParser* thiz, const char* ini)
 		strtrim(key_start);
 		strtrim(val_start);
 		//add to group
-		printf("%s=%s\n", key_start, val_start);
+		//printf("%s=%s\n", key_start, val_start);
+		ret = on_entry(thiz, group_start, key_start, val_start);
+		if (ret != RET_OK)
+		{
+			return ret;
+		}
 	}
 	
-	return RET_OK;
+	return ret;
 }
 
-Ret ini_parser_get_by_key(IniParser* thiz, const char* section, const char* key, char** val)
+Ret ini_parser_get_by_key(IniParser* thiz, const char* group, const char* key, const char** val)
 {
-	return RET_OK;
+	return_val_if_fail((thiz != NULL) && (key != NULL), RET_INVALID_PARAMS);	
+	
+	if (thiz->first == NULL)
+	{
+		return RET_FAIL;
+	}
+	
+	Group* fg = ini_parser_find_group(thiz, group);
+	Entry* fe = fg->first;
+	while(fe != NULL)
+	{
+		if (strcmp(fe->key, key) == 0)
+		{
+			*val = fe->val;
+			return RET_OK;
+		}
+		fe = fe->next;
+	}
+
+	return RET_FAIL;
+}
+
+Ret ini_parser_foreach(IniParser* thiz, void* ctx, EntryVisitFunc visit)
+{
+	return_val_if_fail((thiz != NULL) && (visit != NULL), RET_INVALID_PARAMS);
+	
+	Ret ret = RET_OK;
+	Group* g_iter = thiz->first;
+	while(g_iter != NULL)
+	{
+		Entry* e_iter = g_iter->first;
+		while(e_iter != NULL)
+		{
+			ret = visit(ctx, g_iter->name, e_iter->key, e_iter->val);
+			if (ret == RET_STOP)
+			{
+				return ret;
+			}
+			e_iter = e_iter->next;
+		}
+		g_iter = g_iter->next;
+	}
+
+	return ret;
 }
 
 static void ini_parser_group_destroy(Group* group)
@@ -194,9 +329,6 @@ static void ini_parser_group_destroy(Group* group)
 	while(iter != NULL)
 	{
 		next = iter->next;
-		
-		SAFE_FREE(iter->key);	
-		SAFE_FREE(iter->val);
 		free(iter);
 
 		iter = next;
@@ -229,12 +361,30 @@ void ini_parser_destroy(IniParser* thiz)
 
 #ifdef INI_PARSER_TEST
 
+Ret print(void* ctx, const char* gname, const char* key, const char* val)
+{
+	printf("[%s] %s=%s**\n", gname, key, val);
+	return RET_OK;
+}
+
 int main(void)
 {
-	char* ini = "[group]\nkey=value\nkey1 = value2\n[group2]\nkey3=value3";
-	IniParser* parser = ini_parser_create(NUL, NUL);
-	ini_parser_parse(parser, ini);
-	ini_parser_destroy(parser);
+	char* ini = "[group]\nkey=value\nkey1 = value1\n[group2]\nkey3=value3";
+	IniParser* thiz = ini_parser_create(NUL, NUL);
+	ini_parser_parse(thiz, ini);
+	ini_parser_foreach(thiz, NULL, print);
+	
+	const char* val = NULL;
+	ini_parser_get_by_key(thiz, "group", "key", &val);
+	assert(strcmp(val, "value") == 0);	
+
+	ini_parser_get_by_key(thiz, "group", "key1", &val);
+	assert(strcmp(val, "value1") == 0);	
+
+	ini_parser_get_by_key(thiz, "group2", "key3", &val);
+	assert(strcmp(val, "value3") == 0);	
+
+	ini_parser_destroy(thiz);
 
 	return 0;
 }
